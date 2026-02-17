@@ -1,0 +1,55 @@
+[project]
+name = "salary-calc-uk"
+version = "0.1.0"
+description = "Exploring Marimo notebooks to calcuulate UK salary after tax and NI contributions."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "deptry>=0.24.0",
+    "lefthook>=2.0.15",
+    "ruff>=0.15.1",
+    "ty>=0.0.17",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+fix = true
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Rules managed by the formatter
+    "COM812",
+    "E501",
+    # Incompatible with existing rules
+    "D203",
+    "D212",
+    # Allow TODO/FIXME comments
+    "FIX001",
+    "FIX002",
+    "FIX003",
+    "FIX004",
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ty.rules]
+all = "error"
+
+# [tool.uv]
+# # compiling bytecode adds significant overhead during pre-commit hooks, we
+# # should only enable it where necessary
+# compile-bytecode = false
