@@ -1,0 +1,36 @@
+{
+  "files.eol": "\n",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  "[json]": {
+    // TODO: biome?
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    // TODO: biome?
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+  },
+  "markdown.extension.tableFormatter.normalizeIndentation": true,
+
+  "cSpell.dictionaries": [
+    "bash",
+    "misc",
+    "powershell",
+    "python",
+    "softwareTerms"
+  ]
+}
