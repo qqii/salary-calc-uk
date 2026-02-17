@@ -1,0 +1,35 @@
+assert_lefthook_installed = true
+min_version = "2.0.15"
+source_dir = ".config/lefthook"
+source_dir_local = ".config/lefthook-local"
+
+[commit-msg.scripts."conventional-commit.sh"]
+runner = "bash"
+
+[pre-commit]
+parallel = true
+
+[[pre-commit.jobs]]
+name = "validate"
+glob = ".config/lefthook.toml"
+run = "lefthook validate"
+
+[[pre-commit.jobs]]
+name = "python"
+glob = ["*.py"]
+file_types = ["text/x-python"]
+group.jobs = [
+    { run = "ruff format" },
+    { run = "ruff check" },
+    { run = "ty check" },
+]
+
+[[pre-commit.jobs]]
+name = "nixfmt"
+glob = "*.nix"
+run = "nix fmt {staged_files}"
+
+[[pre-commit.jobs]]
+name = "deptry-check"
+glob = ["*.py", "pyproject.toml"]
+run = "deptry ."
