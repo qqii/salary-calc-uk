@@ -25,11 +25,6 @@ group.jobs = [
 ]
 
 [[pre-commit.jobs]]
-name = "nixfmt"
-glob = "*.nix"
-run = "nix fmt {staged_files}"
-
-[[pre-commit.jobs]]
 name = "deptry-check"
 glob = ["*.py", "pyproject.toml"]
 run = "deptry ."
