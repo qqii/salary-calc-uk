@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "astral-sh.ty",
+    "charliermarsh.ruff",
+    "jannchie.ruff-ignore-explainer",
+    "streetsidesoftware.code-spell-checker",
+
+    // TODO: biome?
+    "esbenp.prettier-vscode",
+    "yzhang.markdown-all-in-one"
+  ],
+  "unwantedRecommendations": []
+}
