@@ -2041,6 +2041,8 @@ def _(HEALTH_INSURANCE_BENCHMARK, TAX_RATES, income_tax, mo, p, user_inputs):
         health_insurance_section = mo.md(
             f"""
             ### Health Insurance Analysis ({mode})
+            **WARNING: WIP**
+
             | | Annual | Monthly |
             |---|---:|---:|
             | Entered premium | {p(annual_cost)} | {p(annual_cost / 12)} |
@@ -2102,6 +2104,8 @@ def _(
         summary = mo.md(
             f"""
             ### Optimised Proposal
+            **WARNING: WIP**
+
             Optimisation target: **{_objective_label}{_objective_suffix}**.
             {_search_label}
 
@@ -2616,7 +2620,10 @@ def _(
 
     forecast_section = mo.vstack(
         [
-            mo.md("### Future Forecast Projection"),
+            mo.md("""
+            ### Future Forecast Projection
+            **WARNING: WIP**
+            """),
             forecast_use_optimized_ui,
             forecast_explainer,
             forecast_sanity_check,
