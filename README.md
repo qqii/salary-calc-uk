@@ -1,5 +1,7 @@
 # Salary Calculator UK
 
+**NOTE: This is work in progress, and has been vibe coded with AI. Based on an initial 100% human attempt [via Observable](https://observablehq.com/@qqii/pension-contribution-hacking).**
+
 ## Prerequisites
 
 - Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
@@ -15,5 +17,5 @@ lefthook install
 uv sync
 # activate the venv at .venv
 
-uv run main.py
+marimo edit salary.py --watch
 ```
