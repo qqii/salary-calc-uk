@@ -1,5 +1,7 @@
 # Salary Calculator UK
 
+https://qqii.github.io/salary-calc-uk/
+
 **NOTE: This is work in progress, and has been vibe coded with AI. Based on an initial 100% human attempt [via Observable](https://observablehq.com/@qqii/pension-contribution-hacking).**
 
 ## Prerequisites
