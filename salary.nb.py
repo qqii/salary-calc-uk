@@ -54,6 +54,7 @@ def _(
     postgraduate_ui,
     sick_days_ui,
     sick_pay_type_ui,
+    standard_hours_per_day_ui,
     yearly_spend_ui,
 ):
     input_tabs = {
@@ -62,6 +63,7 @@ def _(
                 gross_income_ui,
                 employer_pension_contribution_ui,
                 employee_pension_contribution_ui,
+                standard_hours_per_day_ui,
             ]
         ),
         "Loans": mo.vstack(
@@ -178,6 +180,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
         ANNUAL_BONUS = "annual_bonus"
         EMPLOYER_PENSION_CONTRIBUTION = "employer_pension_contribution"
         EMPLOYEE_PENSION_CONTRIBUTION = "employee_pension_contribution"
+        STANDARD_HOURS_PER_DAY = "standard_hours_per_day"
         CURRENT_PENSION_POT = "current_pension_pot"
         SICK_DAYS = "sick_days"
         HOLIDAY_DAYS = "holiday_days"
@@ -231,6 +234,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
         sick_pay_type: SickPayType = SickPayType.CONTRACT
         sick_days_per_year: int = 0
         holiday_days: int = 28
+        standard_hours_per_day: float = 7.5
         health_insurance_annual: Money = 0.0
         health_insurance_bik: Money = 0.0
 
@@ -314,6 +318,8 @@ def _(StrEnum, TypeAlias, dataclass, field):
         max_gross_income: Money = 200_000
         max_annual_bonus: Money = 200_000
         max_pension_contribution: Rate = 0.5
+        min_standard_hours_per_day: float = 1.0
+        max_standard_hours_per_day: float = 24.0
         max_sick_days: int = 30
         min_holiday_days: int = 28
         max_holiday_days: int = 45
@@ -339,6 +345,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
         annual_bonus: Money = 250
         employer_pension_contribution: Rate = 0.08
         employee_pension_contribution: Rate = 0.04
+        standard_hours_per_day: float = 7.5
         current_pension_pot: Money = 32_000
         sick_pay_type: SickPayType = SickPayType.CONTRACT
         sick_days: int = 5
@@ -362,6 +369,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
         annual_bonus: Money
         employer_pension_contribution: Rate
         employee_pension_contribution: Rate
+        standard_hours_per_day: float
         current_pension_pot: Money
         sick_days: int
         holiday_days: int
@@ -410,7 +418,7 @@ def _(
     ValidationBounds,
 ):
     MONTHS_PER_YEAR = 12
-    HOURS_PER_WEEK = 40
+    WORKING_DAYS_PER_WEEK = 5
     WEEKS_PER_YEAR = 52
 
     TAX_RATES = TaxRates()
@@ -433,7 +441,7 @@ def _(
     return (
         FORECAST_ASSUMPTIONS,
         HEALTH_INSURANCE_BENCHMARK,
-        HOURS_PER_WEEK,
+        WORKING_DAYS_PER_WEEK,
         INPUT_DEFAULTS,
         MONTHS_PER_YEAR,
         TAX_RATES,
@@ -458,12 +466,12 @@ def _():
 @app.cell(hide_code=True)
 def _(
     CalcOptions,
-    HOURS_PER_WEEK,
     MONTHS_PER_YEAR,
     RateSummary,
     SickPayType,
     StudentLoanPlan,
     TaxRates,
+    WORKING_DAYS_PER_WEEK,
     WEEKS_PER_YEAR,
 ):
     def compute_income_tax(annual_gross: float, rates: TaxRates) -> float:
@@ -588,10 +596,11 @@ def _(
 
         effective_daily_rate = annual_net_after_ssp / effective_working_days
         gross_daily_rate = annual_gross / effective_working_days
-        effective_hourly_rate = effective_daily_rate / rates.standard_hours_per_day
-        gross_hourly_rate = gross_daily_rate / rates.standard_hours_per_day
-        effective_weekly_rate = effective_hourly_rate * HOURS_PER_WEEK
-        gross_weekly_rate = gross_hourly_rate * HOURS_PER_WEEK
+        effective_hourly_rate = effective_daily_rate / options.standard_hours_per_day
+        gross_hourly_rate = gross_daily_rate / options.standard_hours_per_day
+        weekly_hours = options.standard_hours_per_day * WORKING_DAYS_PER_WEEK
+        effective_weekly_rate = effective_hourly_rate * weekly_hours
+        gross_weekly_rate = gross_hourly_rate * weekly_hours
 
         return RateSummary(
             effective_daily_rate=effective_daily_rate,
@@ -1178,6 +1187,11 @@ def _(
         step=0.01,
         label="Employee Pension Contribution (0-1)",
     )
+    standard_hours_per_day_ui = mo.ui.number(
+        value=INPUT_DEFAULTS.standard_hours_per_day,
+        step=0.25,
+        label="Standard Hours Per Day",
+    )
     yearly_spend_ui = mo.ui.number(
         value=INPUT_DEFAULTS.yearly_spend,
         label="Approximate Yearly Spending (£)",
@@ -1298,6 +1312,7 @@ def _(
         postgraduate_ui,
         sick_days_ui,
         sick_pay_type_ui,
+        standard_hours_per_day_ui,
         yearly_spend_ui,
     )
 
@@ -1330,6 +1345,7 @@ def _(
     postgraduate_ui,
     sick_days_ui,
     sick_pay_type_ui,
+    standard_hours_per_day_ui,
     yearly_spend_ui,
 ):
     field_specs = (
@@ -1376,6 +1392,18 @@ def _(
             range_message=(
                 f"Employee pension contribution must be between 0.0 and "
                 f"{VALIDATION_BOUNDS.max_pension_contribution:g}."
+            ),
+        ),
+        FieldSpec(
+            key=InputField.STANDARD_HOURS_PER_DAY,
+            label="Standard hours per day",
+            default=INPUT_DEFAULTS.standard_hours_per_day,
+            minimum=VALIDATION_BOUNDS.min_standard_hours_per_day,
+            maximum=VALIDATION_BOUNDS.max_standard_hours_per_day,
+            range_message=(
+                f"Standard hours per day must be between "
+                f"{VALIDATION_BOUNDS.min_standard_hours_per_day:g} and "
+                f"{VALIDATION_BOUNDS.max_standard_hours_per_day:g}."
             ),
         ),
         FieldSpec(
@@ -1456,6 +1484,7 @@ def _(
         InputField.ANNUAL_BONUS: annual_bonus_ui.value,
         InputField.EMPLOYER_PENSION_CONTRIBUTION: employer_pension_contribution_ui.value,
         InputField.EMPLOYEE_PENSION_CONTRIBUTION: employee_pension_contribution_ui.value,
+        InputField.STANDARD_HOURS_PER_DAY: standard_hours_per_day_ui.value,
         InputField.CURRENT_PENSION_POT: forecast_current_pension_pot_ui.value,
         InputField.SICK_DAYS: sick_days_ui.value,
         InputField.HOLIDAY_DAYS: holiday_days_ui.value,
@@ -1533,6 +1562,7 @@ def _(
         sick_pay_type=SickPayType(sick_pay_type_ui.value),
         sick_days_per_year=sick_days,
         holiday_days=holiday_days + holiday_rollover,
+        standard_hours_per_day=parsed_values[InputField.STANDARD_HOURS_PER_DAY],
         health_insurance_annual=(
             parsed_values[InputField.HEALTH_INSURANCE_ANNUAL]
             if health_insurance_toggle
@@ -1550,6 +1580,7 @@ def _(
         annual_bonus=parsed_values[InputField.ANNUAL_BONUS],
         employer_pension_contribution=employer_pension_contribution,
         employee_pension_contribution=employee_pension_contribution,
+        standard_hours_per_day=parsed_values[InputField.STANDARD_HOURS_PER_DAY],
         current_pension_pot=parsed_values[InputField.CURRENT_PENSION_POT],
         sick_days=sick_days,
         holiday_days=holiday_days,
@@ -1899,7 +1930,7 @@ def _(c, curr, mo, p, user_inputs):
 
 
 @app.cell(hide_code=True)
-def _(HOURS_PER_WEEK, TAX_RATES, curr, mo, p):
+def _(TAX_RATES, WORKING_DAYS_PER_WEEK, curr, mo, p, user_inputs):
     rates = curr.rates
     rate_line = (
         " - sick days"
@@ -1907,11 +1938,12 @@ def _(HOURS_PER_WEEK, TAX_RATES, curr, mo, p):
         < TAX_RATES.working_days_per_year - rates.holiday_days
         else ""
     )
+    weekly_hours = user_inputs.standard_hours_per_day * WORKING_DAYS_PER_WEEK
 
     rates_title = mo.md("### Effective Rates")
     rates_content = mo.md(
         f"""
-        Based on {rates.effective_working_days} working days ({TAX_RATES.working_days_per_year} - {rates.holiday_days} holidays{rate_line}), {TAX_RATES.standard_hours_per_day}h/day and {HOURS_PER_WEEK}h/week:
+        Based on {rates.effective_working_days} working days ({TAX_RATES.working_days_per_year} - {rates.holiday_days} holidays{rate_line}), {user_inputs.standard_hours_per_day:g}h/day and {weekly_hours:g}h/week:
 
         | | Net | Gross |
         |---|---:|---:|

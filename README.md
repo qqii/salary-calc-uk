@@ -19,5 +19,5 @@ lefthook install
 uv sync
 # activate the venv at .venv
 
-marimo edit salary.py --watch
+marimo edit --watch salary.nb.py 
 ```
