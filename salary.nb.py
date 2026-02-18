@@ -23,6 +23,8 @@ def _(mo):
     mo.md("""
     # UK Salary & Pension Calculator (2025/26)
     This notebook estimates monthly and annual salary outcomes for UK PAYE with pension, NI, student loans, SSP, health insurance BIK, optimization, and long-term value projection.
+
+    [Github Source Code](https://github.com/qqii/salary-calc-uk/tree/<COMMIT_HASH>) (`<COMMIT_HASH>`)
     """)
     return
 
@@ -1876,7 +1878,7 @@ def _(c, curr, mo, p, user_inputs):
     | | Monthly | Annual |
     |---|---:|---:|
     | **Gross pay** | {p(curr.inputs.gross)} | {p(curr.annual.gross)} |
-    | Flat bonus input (display only) | {p(user_inputs.annual_bonus / 12)} | {p(user_inputs.annual_bonus)} |
+    | Flat bonus input (display only) | - | {p(user_inputs.annual_bonus)} |
     | Income tax | {p(curr.details.tax)} | {p(curr.annual.tax)} |
     | Employee NI | {p(curr.details.national_insurance)} | {p(curr.annual.ni)} |
     | Student loan | {p(curr.details.student_loan)} | {p(curr.annual.student_loan)} |

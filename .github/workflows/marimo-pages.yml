@@ -32,6 +32,15 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Inject commit hash into notebook links
+        run: |
+          COMMIT_HASH="$(git rev-parse HEAD)"
+          sed -i "s|<COMMIT_HASH>|${COMMIT_HASH}|g" salary.nb.py
+          if rg -q "<COMMIT_HASH>" salary.nb.py; then
+            echo "ERROR: <COMMIT_HASH> placeholder still present after replacement."
+            exit 1
+          fi
+
       - name: Export notebook to WASM HTML
         run: |
           mkdir -p site
