@@ -9,6 +9,16 @@ app = marimo.App(
 
 
 @app.cell(hide_code=True)
+def _():
+    # > To make sure markdown and other elements render quickly: make sure to
+    # put import marimo as mo in its own cell, with no other lines of code.
+    # https://docs.marimo.io/guides/wasm/#packages
+    import marimo as mo
+
+    return (mo,)
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md("""
     # UK Salary & Pension Calculator (2025/26)
@@ -116,16 +126,28 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _():
+async def _():
     from dataclasses import dataclass, field
     from enum import StrEnum
     from typing import TypeAlias
 
-    import altair as alt
-    import marimo as mo
-    import polars as pl
+    try:
+        import altair as alt
+    except ImportError:
+        import micropip
 
-    return StrEnum, TypeAlias, alt, dataclass, field, mo, pl
+        await micropip.install("altair")
+        import altair as alt
+
+    try:
+        import polars as pl
+    except ImportError:
+        import micropip
+
+        await micropip.install("polars")
+        import polars as pl
+
+    return StrEnum, TypeAlias, alt, dataclass, field, pl
 
 
 @app.cell(hide_code=True)
@@ -632,7 +654,9 @@ def _(
             annual_employer_pension,
             annual_total_pension,
         ) = compute_pension_parts(annual_paid_gross, employer_prc, employee_prc)
-        annual_taxable_without_bik = max(0.0, annual_paid_gross - annual_employee_pension)
+        annual_taxable_without_bik = max(
+            0.0, annual_paid_gross - annual_employee_pension
+        )
         annual_taxable = annual_taxable_without_bik + opts.health_insurance_bik
 
         annual_ni = compute_employee_ni(annual_paid_gross, TAX_RATES)
