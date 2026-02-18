@@ -1208,7 +1208,7 @@ def _(
     )
     tax_code_ui = mo.ui.text(
         value=INPUT_DEFAULTS.tax_code,
-        label="Tax Code (e.g. 1182L)",
+        label="Tax Code (e.g. 1257L)",
     )
     employer_pension_contribution_ui = mo.ui.number(
         value=INPUT_DEFAULTS.employer_pension_contribution,
