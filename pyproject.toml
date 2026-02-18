@@ -3,7 +3,7 @@ name = "salary-calc-uk"
 version = "0.1.0"
 description = "Exploring Marimo notebooks to calcuulate UK salary after tax and NI contributions."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.14.3"
 dependencies = [
     "marimo[recommended]>=0.19.11",
 
