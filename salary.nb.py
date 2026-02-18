@@ -34,11 +34,11 @@ def _(
     annual_bonus_ui,
     employee_pension_contribution_ui,
     employer_pension_contribution_ui,
+    forecast_current_pension_pot_ui,
+    forecast_drawdown_years_ui,
     forecast_inflation_ui,
     forecast_isa_management_fee_ui,
     forecast_market_apy_ui,
-    forecast_current_pension_pot_ui,
-    forecast_drawdown_years_ui,
     forecast_pension_amc_ui,
     forecast_years_ui,
     gross_income_ui,
@@ -152,7 +152,6 @@ async def _():
 
         await micropip.install("polars")
         import polars as pl
-
     return StrEnum, TypeAlias, alt, dataclass, field, pl
 
 
@@ -409,8 +408,8 @@ def _(StrEnum, TypeAlias, dataclass, field):
         InputDefaults,
         InputField,
         IsaBreakdown,
-        OptimizationTarget,
         OptimizationOutcome,
+        OptimizationTarget,
         RateSummary,
         SickPayType,
         StudentLoanPlan,
@@ -452,12 +451,12 @@ def _(
     return (
         FORECAST_ASSUMPTIONS,
         HEALTH_INSURANCE_BENCHMARK,
-        WORKING_DAYS_PER_WEEK,
         INPUT_DEFAULTS,
         MONTHS_PER_YEAR,
         TAX_RATES,
         VALIDATION_BOUNDS,
         WEEKS_PER_YEAR,
+        WORKING_DAYS_PER_WEEK,
     )
 
 
@@ -482,8 +481,8 @@ def _(
     SickPayType,
     StudentLoanPlan,
     TaxRates,
-    WORKING_DAYS_PER_WEEK,
     WEEKS_PER_YEAR,
+    WORKING_DAYS_PER_WEEK,
 ):
     def compute_income_tax(
         annual_gross: float,
@@ -1188,7 +1187,7 @@ def _(FORECAST_ASSUMPTIONS, IsaBreakdown, income_tax):
             isa_management_fee=FORECAST_ASSUMPTIONS.isa_management_fee,
         )
 
-    return forecast, forecast_projection, forecast_terminal_value
+    return forecast_projection, forecast_terminal_value
 
 
 @app.cell(hide_code=True)
@@ -1704,8 +1703,8 @@ def _(
     forecast_pension_amc_ui,
     forecast_terminal_value,
     forecast_years_ui,
-    optimize_objective_ui,
     optimization_curr,
+    optimize_objective_ui,
     optimize_proposal,
     optimize_search_gross_ui,
     options,
@@ -1772,10 +1771,10 @@ def _(
     forecast_pension_amc_ui,
     forecast_terminal_value,
     forecast_years_ui,
+    optimization_curr,
     optimize_objective_ui,
     optimize_search_gross_ui,
     options,
-    optimization_curr,
     pl,
     user_inputs,
 ):
@@ -1999,8 +1998,8 @@ def _(TAX_RATES, WORKING_DAYS_PER_WEEK, curr, mo, p, user_inputs):
 
         | | Net | Gross |
         |---|---:|---:|
-        | **Daily** | {p(rates.effective_daily_rate)} | {p(rates.gross_daily_rate)} |
         | **Hourly** | {p(rates.effective_hourly_rate)} | {p(rates.gross_hourly_rate)} |
+        | **Daily** | {p(rates.effective_daily_rate)} | {p(rates.gross_daily_rate)} |
         | **Weekly** | {p(rates.effective_weekly_rate)} | {p(rates.gross_weekly_rate)} |
         | **Monthly** | {p(rates.effective_monthly_rate)} | {p(rates.gross_monthly_rate)} |
         """
@@ -2070,12 +2069,12 @@ def _(
     c,
     forecast_years_ui,
     mo,
-    optimize_objective_ui,
-    optimize_search_gross_ui,
     optimization,
     optimization_curr,
     optimization_curve_df,
     optimization_surface_df,
+    optimize_objective_ui,
+    optimize_search_gross_ui,
     pl,
     user_inputs,
 ):
