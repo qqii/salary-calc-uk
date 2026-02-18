@@ -5,13 +5,25 @@ description = "Exploring Marimo notebooks to calcuulate UK salary after tax and 
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "altair>=6.0.0",
     "marimo[recommended]>=0.19.11",
+
+    # plotting and data manipulation
+    "altair>=6.0.0",
     "polars>=1.38.1",
+
+    # for wasm notebooks
+    "micropip>=0.11.0",
 ]
 
 [dependency-groups]
-dev = ["deptry>=0.24.0", "lefthook>=2.0.15", "ruff>=0.15.1", "ty>=0.0.17"]
+dev = [
+    # dev tool
+    "lefthook>=2.0.15",
+    # linting and formatting
+    "deptry>=0.24.0",
+    "ruff>=0.15.1",
+    "ty>=0.0.17",
+]
 
 [tool.coverage.report]
 show_missing = true
