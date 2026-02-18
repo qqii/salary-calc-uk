@@ -20,9 +20,15 @@ glob = ["*.py"]
 file_types = ["text/x-python"]
 group.jobs = [
     { run = "ruff format" },
-    { run = "ruff check" },
+    { run = "ruff check --fix" },
     { run = "ty check" },
 ]
+
+[[pre-commit.jobs]]
+name = "marimo-notebook"
+glob = ["*.nb.py"]
+file_types = ["text/x-python"]
+run = "marimo check --strict --fix {staged_files}"
 
 [[pre-commit.jobs]]
 name = "deptry-check"
