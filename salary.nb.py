@@ -55,12 +55,14 @@ def _(
     sick_days_ui,
     sick_pay_type_ui,
     standard_hours_per_day_ui,
+    tax_code_ui,
     yearly_spend_ui,
 ):
     input_tabs = {
         "Compensation": mo.vstack(
             [
                 gross_income_ui,
+                tax_code_ui,
                 employer_pension_contribution_ui,
                 employee_pension_contribution_ui,
                 standard_hours_per_day_ui,
@@ -177,6 +179,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
 
     class InputField(StrEnum):
         GROSS_INCOME = "gross_income"
+        TAX_CODE = "tax_code"
         ANNUAL_BONUS = "annual_bonus"
         EMPLOYER_PENSION_CONTRIBUTION = "employer_pension_contribution"
         EMPLOYEE_PENSION_CONTRIBUTION = "employee_pension_contribution"
@@ -225,12 +228,15 @@ def _(StrEnum, TypeAlias, dataclass, field):
         ssp_qualifying_days_per_week: int = 5
         standard_hours_per_day: float = 7.5
         working_days_per_year: int = 260
+        pension_qualifying_earnings_lower: Money = 6_240
+        pension_qualifying_earnings_upper: Money = 50_270
         min_total_pension_contribution: Rate = 0.08
         nest_contribution_charge: Rate = 0.018
 
     @dataclass(frozen=True)
     class CalcOptions:
         student_loan_plans: tuple[StudentLoanPlan, ...] = ()
+        personal_allowance: Money = 12_570
         sick_pay_type: SickPayType = SickPayType.CONTRACT
         sick_days_per_year: int = 0
         holiday_days: int = 28
@@ -253,6 +259,8 @@ def _(StrEnum, TypeAlias, dataclass, field):
         student_loan: Money
         tax: Money
         employer_national_insurance: Money
+        employer_health_insurance_cost: Money
+        employer_bik_national_insurance: Money
         ssp_deduction: Money
         health_insurance_bik_tax: Money
 
@@ -342,6 +350,8 @@ def _(StrEnum, TypeAlias, dataclass, field):
     @dataclass(frozen=True)
     class InputDefaults:
         gross_income: Money = 48_000
+        tax_code: str = "1182L"
+        health_insurance_annual: Money = 1_080
         annual_bonus: Money = 250
         employer_pension_contribution: Rate = 0.08
         employee_pension_contribution: Rate = 0.04
@@ -366,6 +376,7 @@ def _(StrEnum, TypeAlias, dataclass, field):
     @dataclass(frozen=True)
     class UserInputs:
         gross_income: Money
+        tax_code: str
         annual_bonus: Money
         employer_pension_contribution: Rate
         employee_pension_contribution: Rate
@@ -474,8 +485,16 @@ def _(
     WORKING_DAYS_PER_WEEK,
     WEEKS_PER_YEAR,
 ):
-    def compute_income_tax(annual_gross: float, rates: TaxRates) -> float:
-        personal_allowance = rates.personal_allowance
+    def compute_income_tax(
+        annual_gross: float,
+        rates: TaxRates,
+        personal_allowance_override: float | None = None,
+    ) -> float:
+        personal_allowance = (
+            personal_allowance_override
+            if personal_allowance_override is not None
+            else rates.personal_allowance
+        )
         if annual_gross > rates.personal_allowance_taper_threshold:
             taper = (annual_gross - rates.personal_allowance_taper_threshold) / 2
             personal_allowance = max(0.0, personal_allowance - taper)
@@ -539,10 +558,16 @@ def _(
         annual_gross: float,
         employer_prc: float,
         employee_prc: float,
+        rates: TaxRates,
     ) -> tuple[float, float, float, float]:
-        annual_employee_pension = annual_gross * employee_prc
+        qualifying_earnings = max(
+            0.0,
+            min(annual_gross, rates.pension_qualifying_earnings_upper)
+            - rates.pension_qualifying_earnings_lower,
+        )
+        annual_employee_pension = qualifying_earnings * employee_prc
         annual_government_top_up = 0.0
-        annual_employer_pension = annual_gross * employer_prc
+        annual_employer_pension = qualifying_earnings * employer_prc
         annual_total_pension = (
             annual_employee_pension + annual_government_top_up + annual_employer_pension
         )
@@ -664,11 +689,13 @@ def _(
             annual_government_top_up,
             annual_employer_pension,
             annual_total_pension,
-        ) = compute_pension_parts(annual_paid_gross, employer_prc, employee_prc)
-        annual_taxable_without_bik = max(
-            0.0, annual_paid_gross - annual_employee_pension
+        ) = compute_pension_parts(
+            annual_paid_gross,
+            employer_prc,
+            employee_prc,
+            TAX_RATES,
         )
-        annual_taxable = annual_taxable_without_bik + opts.health_insurance_bik
+        annual_taxable = annual_paid_gross
 
         annual_ni = compute_employee_ni(annual_paid_gross, TAX_RATES)
         annual_student_loan = compute_student_loan(
@@ -676,7 +703,11 @@ def _(
             opts.student_loan_plans,
             TAX_RATES,
         )
-        annual_tax = compute_income_tax(annual_taxable, TAX_RATES)
+        annual_tax = compute_income_tax(
+            annual_taxable,
+            TAX_RATES,
+            opts.personal_allowance,
+        )
 
         annual_net_after_ssp = (
             annual_paid_gross
@@ -702,10 +733,7 @@ def _(
 
         monthly_net = annual_net_after_ssp / MONTHS_PER_YEAR
         monthly_pension = annual_total_pension / MONTHS_PER_YEAR
-        monthly_bik_tax = (
-            compute_income_tax(annual_taxable, TAX_RATES)
-            - compute_income_tax(annual_taxable_without_bik, TAX_RATES)
-        ) / MONTHS_PER_YEAR
+        monthly_bik_tax = 0.0
 
         return CalcResult(
             theoretical_net=monthly_net + monthly_pension,
@@ -725,6 +753,10 @@ def _(
                 student_loan=annual_student_loan / MONTHS_PER_YEAR,
                 tax=annual_tax / MONTHS_PER_YEAR,
                 employer_national_insurance=annual_employer_ni / MONTHS_PER_YEAR,
+                employer_health_insurance_cost=(
+                    opts.health_insurance_annual / MONTHS_PER_YEAR
+                ),
+                employer_bik_national_insurance=annual_bik_ni / MONTHS_PER_YEAR,
                 ssp_deduction=annual_ssp_deduction / MONTHS_PER_YEAR,
                 health_insurance_bik_tax=(
                     monthly_bik_tax if opts.health_insurance_bik > 0 else 0.0
@@ -1168,24 +1200,26 @@ def _(
     VALIDATION_BOUNDS,
     mo,
 ):
-    estimated_health_insurance_annual = round(
-        12 * HEALTH_INSURANCE_BENCHMARK.blended_monthly_estimate,
-        2,
-    )
+    _ = HEALTH_INSURANCE_BENCHMARK
+    estimated_health_insurance_annual = INPUT_DEFAULTS.health_insurance_annual
 
     gross_income_ui = mo.ui.number(
         value=INPUT_DEFAULTS.gross_income,
         label="Gross Yearly Salary (£)",
     )
+    tax_code_ui = mo.ui.text(
+        value=INPUT_DEFAULTS.tax_code,
+        label="Tax Code (e.g. 1182L)",
+    )
     employer_pension_contribution_ui = mo.ui.number(
         value=INPUT_DEFAULTS.employer_pension_contribution,
         step=0.01,
-        label="Employer Pension Contribution (0-1)",
+        label="Employer Pension Contribution (qualifying earnings, 0-1)",
     )
     employee_pension_contribution_ui = mo.ui.number(
         value=INPUT_DEFAULTS.employee_pension_contribution,
         step=0.01,
-        label="Employee Pension Contribution (0-1)",
+        label="Employee Pension Contribution (qualifying earnings, 0-1)",
     )
     standard_hours_per_day_ui = mo.ui.number(
         value=INPUT_DEFAULTS.standard_hours_per_day,
@@ -1313,6 +1347,7 @@ def _(
         sick_days_ui,
         sick_pay_type_ui,
         standard_hours_per_day_ui,
+        tax_code_ui,
         yearly_spend_ui,
     )
 
@@ -1346,6 +1381,7 @@ def _(
     sick_days_ui,
     sick_pay_type_ui,
     standard_hours_per_day_ui,
+    tax_code_ui,
     yearly_spend_ui,
 ):
     field_specs = (
@@ -1457,7 +1493,7 @@ def _(
         FieldSpec(
             key=InputField.HEALTH_INSURANCE_ANNUAL,
             label="Health insurance premium",
-            default=0,
+            default=INPUT_DEFAULTS.health_insurance_annual,
             minimum=0,
             maximum=VALIDATION_BOUNDS.max_health_insurance_annual,
             range_message=(
@@ -1493,6 +1529,8 @@ def _(
         InputField.YEARLY_SPEND: yearly_spend_ui.value,
     }
 
+    tax_code = str(tax_code_ui.value or "").strip().upper()
+
     parsed_values: dict[InputField, float] = {}
     errors: list[str] = []
 
@@ -1517,6 +1555,15 @@ def _(
             errors.append(spec.range_message or f"{spec.label} is out of range.")
 
         parsed_values[spec.key] = normalized_value
+
+    tax_code_digits = "".join(ch for ch in tax_code if ch.isdigit())
+    personal_allowance = TAX_RATES.personal_allowance
+    if not tax_code or not tax_code_digits:
+        errors.append("Tax code must include numeric digits, e.g. 1182L.")
+    else:
+        personal_allowance = float(int(tax_code_digits) * 10)
+        if tax_code.startswith("K"):
+            personal_allowance = -personal_allowance
 
     employer_pension_contribution = parsed_values[
         InputField.EMPLOYER_PENSION_CONTRIBUTION
@@ -1559,6 +1606,7 @@ def _(
 
     options = CalcOptions(
         student_loan_plans=selected_student_loan_plans,
+        personal_allowance=personal_allowance,
         sick_pay_type=SickPayType(sick_pay_type_ui.value),
         sick_days_per_year=sick_days,
         holiday_days=holiday_days + holiday_rollover,
@@ -1577,6 +1625,7 @@ def _(
 
     user_inputs = UserInputs(
         gross_income=parsed_values[InputField.GROSS_INCOME],
+        tax_code=tax_code,
         annual_bonus=parsed_values[InputField.ANNUAL_BONUS],
         employer_pension_contribution=employer_pension_contribution,
         employee_pension_contribution=employee_pension_contribution,
@@ -1904,6 +1953,7 @@ def _(c, curr, mo, p, user_inputs):
     current_breakdown_title = mo.md("### Current Salary Breakdown")
     current_breakdown_content = mo.md(f"""
     With a base gross annual salary of {p(curr.annual.gross)} ({p(curr.inputs.gross)}/month):
+    Tax code used for PAYE: **{user_inputs.tax_code}** (BIK assumed integrated in tax code allowance).
     Bonus is excluded from calculations (optimisation + forecast); shown here for reference only.
 
     | | Monthly | Annual |
@@ -1915,9 +1965,11 @@ def _(c, curr, mo, p, user_inputs):
     | Student loan | {p(curr.details.student_loan)} | {p(curr.annual.student_loan)} |
     | Employee pension ({c(curr.inputs.employee_prc)}) | {p(curr.details.employee_pension_contribution)} | {p(curr.details.employee_pension_contribution * 12)} |
     | SSP deduction | {p(curr.details.ssp_deduction)} | {p(curr.annual.ssp_deduction)} |
-    | BIK tax (health ins.) | {p(curr.details.health_insurance_bik_tax)} | {p(curr.details.health_insurance_bik_tax * 12)} |
     | **Net take-home** | **{p(curr.net_pay)}** | **{p(curr.annual.net_pay)}** |
     | Employer pension ({c(curr.inputs.employer_prc)}) | {p(curr.details.employer_pension_contribution)} | {p(curr.details.employer_pension_contribution * 12)} |
+    | Employer NI (salary) | {p(curr.details.employer_national_insurance)} | {p(curr.details.employer_national_insurance * 12)} |
+    | Employer health insurance premium | {p(curr.details.employer_health_insurance_cost)} | {p(curr.details.employer_health_insurance_cost * 12)} |
+    | Employer NI on BIK (Class 1A approx.) | {p(curr.details.employer_bik_national_insurance)} | {p(curr.details.employer_bik_national_insurance * 12)} |
     | Gov pension top-up (RAS only) | {p(curr.details.gov_pension_contribution)} | {p(curr.details.gov_pension_contribution * 12)} |
     | **Total pension** | **{p(curr.total_pension_contribution)}** | **{p(curr.total_pension_contribution * 12)}** |
     | **Effective net (pay + pension)** | **{p(curr.theoretical_net)}** | **{p(curr.theoretical_net * 12)}** |
@@ -1958,7 +2010,7 @@ def _(TAX_RATES, WORKING_DAYS_PER_WEEK, curr, mo, p, user_inputs):
 
 
 @app.cell(hide_code=True)
-def _(HEALTH_INSURANCE_BENCHMARK, income_tax, mo, p, user_inputs):
+def _(HEALTH_INSURANCE_BENCHMARK, TAX_RATES, income_tax, mo, p, user_inputs):
     if user_inputs.health_insurance_annual <= 0:
         health_insurance_section = mo.md("")
     else:
@@ -1972,12 +2024,16 @@ def _(HEALTH_INSURANCE_BENCHMARK, income_tax, mo, p, user_inputs):
             extra_tax = income_tax(annual_tax_base + annual_cost) - income_tax(
                 annual_tax_base
             )
+            employer_bik_ni = annual_cost * TAX_RATES.ni_employer_rate
+            employer_total_cost = annual_cost + employer_bik_ni
             mode = "Employer Benefits"
             net_personal_cost = extra_tax
             comparison_delta = est_blended_annual - net_personal_cost
             comparison_label = "Estimated personal cost avoided vs blended AXA+Vitality"
         else:
             extra_tax = 0.0
+            employer_bik_ni = 0.0
+            employer_total_cost = 0.0
             mode = "Personal Insurance"
             net_personal_cost = annual_cost
             comparison_delta = annual_cost - est_blended_annual
@@ -1991,6 +2047,8 @@ def _(HEALTH_INSURANCE_BENCHMARK, income_tax, mo, p, user_inputs):
             | Entered premium | {p(annual_cost)} | {p(annual_cost / 12)} |
             | BIK tax impact | {p(extra_tax)} | {p(extra_tax / 12)} |
             | Your net personal cost | {p(net_personal_cost)} | {p(net_personal_cost / 12)} |
+            | Employer NI on BIK (Class 1A approx.) | {p(employer_bik_ni)} | {p(employer_bik_ni / 12)} |
+            | Employer total cost (premium + Class 1A) | {p(employer_total_cost)} | {p(employer_total_cost / 12)} |
             | AXA benchmark estimate | {p(est_axa_annual)} | {p(est_axa_annual / 12)} |
             | Vitality estimate (official 'from') | {p(est_vitality_annual)} | {p(est_vitality_annual / 12)} |
             | Blended AXA+Vitality estimate | {p(est_blended_annual)} | {p(est_blended_annual / 12)} |
