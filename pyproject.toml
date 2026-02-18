@@ -10,9 +10,6 @@ dependencies = [
     # plotting and data manipulation
     "altair>=6.0.0",
     "polars>=1.38.1",
-
-    # for wasm notebooks
-    "micropip>=0.11.0",
 ]
 
 [dependency-groups]

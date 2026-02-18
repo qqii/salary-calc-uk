@@ -133,30 +133,38 @@ def _(
 
 @app.cell(hide_code=True)
 async def _():
-    from dataclasses import dataclass, field
-    from enum import StrEnum
-    from typing import TypeAlias
+    import importlib
 
     try:
         import altair as alt
     except ImportError:
-        import micropip
-
+        micropip = importlib.import_module("micropip")
         await micropip.install("altair")
         import altair as alt
 
     try:
         import polars as pl
     except ImportError:
-        import micropip
-
+        micropip = importlib.import_module("micropip")
         await micropip.install("polars")
         import polars as pl
-    return StrEnum, TypeAlias, alt, dataclass, field, pl
+    return alt, pl
 
 
 @app.cell(hide_code=True)
-def _(StrEnum, TypeAlias, dataclass, field):
+def _():
+    from dataclasses import dataclass as _dataclass
+    from dataclasses import field as _field
+    from enum import StrEnum as _StrEnum
+    from typing import TypeAlias as _TypeAlias
+
+    # Rebind reactive cell inputs to concrete stdlib symbols so static
+    # type-checkers can resolve enum/dataclass semantics in notebook code.
+    StrEnum = _StrEnum
+    TypeAlias = _TypeAlias
+    dataclass = _dataclass
+    field = _field
+
     Money: TypeAlias = float
     Rate: TypeAlias = float
 
