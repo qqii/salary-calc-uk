@@ -24,7 +24,7 @@ def _(mo):
     # UK Salary & Pension Calculator (2025/26)
     This notebook estimates monthly and annual salary outcomes for UK PAYE with pension, NI, student loans, SSP, health insurance BIK, optimization, and long-term value projection.
 
-    [Github Source Code](https://github.com/qqii/salary-calc-uk/tree/<COMMIT_HASH>) (`<COMMIT_HASH>`)
+    [Github Source Code (`<COMMIT_HASH>`)](https://github.com/qqii/salary-calc-uk/tree/<COMMIT_HASH>)
     """)
     return
 
