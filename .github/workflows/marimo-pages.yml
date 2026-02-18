@@ -43,6 +43,9 @@ jobs:
 
       - name: Export notebook to WASM HTML
         run: |
+          # TODO: build in edit mode and run mode, defaulting to run mode at the
+          # root but having a link to switch to edit mode for users who want to
+          # see the code and experiment with it
           mkdir -p site
           uv run marimo export html-wasm salary.nb.py \
             --mode run \
