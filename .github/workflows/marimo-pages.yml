@@ -45,7 +45,7 @@ jobs:
         run: |
           mkdir -p site
           uv run marimo export html-wasm salary.nb.py \
-            --mode edit \
+            --mode run \
             --no-show-code \
             --output site/index.html \
             --force
