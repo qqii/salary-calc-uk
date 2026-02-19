@@ -14,7 +14,6 @@
     'dependencies',
   ],
   rangeStrategy: 'bump',
-  prConcurrentLimit: 8,
   prHourlyLimit: 4,
   lockFileMaintenance: {
     enabled: true,
