@@ -356,19 +356,19 @@ def _():
 
     @dataclass(frozen=True)
     class InputDefaults:
-        gross_income: Money = 48_000
-        tax_code: str = "1182L"
-        health_insurance_annual: Money = 1_080
-        annual_bonus: Money = 250
-        employer_pension_contribution: Rate = 0.08
-        employee_pension_contribution: Rate = 0.04
-        standard_hours_per_day: float = 7.5
+        gross_income: Money = 90_000
+        tax_code: str = "1257L"
+        health_insurance_annual: Money = 0
+        annual_bonus: Money = 0
+        employer_pension_contribution: Rate = 0.03
+        employee_pension_contribution: Rate = 0.05
+        standard_hours_per_day: float = 8.0
         current_pension_pot: Money = 32_000
-        sick_pay_type: SickPayType = SickPayType.CONTRACT
-        sick_days: int = 5
-        holiday_days: int = 40
-        holiday_rollover: int = 3
-        health_insurance_toggle: bool = True
+        sick_pay_type: SickPayType = SickPayType.SSP
+        sick_days: int = 0
+        holiday_days: int = 28
+        holiday_rollover: int = 0
+        health_insurance_toggle: bool = False
         plan_1_enabled: bool = False
         plan_2_enabled: bool = True
         plan_4_enabled: bool = False
