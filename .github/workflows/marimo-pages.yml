@@ -16,7 +16,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+    permissions:
+      contents: read
+      security-events: write
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
