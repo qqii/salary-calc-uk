@@ -37,7 +37,9 @@ jobs:
         run: git diff --exit-code
 
       - name: Run semgrep
-        run: uv run semgrep scan --config auto --error --sarif-output=semgrep.sarif .
+        env:
+          SEMGREP_RULES: auto
+        run: uv run semgrep ci --sarif-output=semgrep.sarif
 
       - name: Upload semgrep SARIF
         if: success() || failure()
