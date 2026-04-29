@@ -47,10 +47,11 @@ glob = ["*.nb.py"]
 file_types = ["text/x-python"]
 run = "marimo check --strict --fix {staged_files}"
 
+# TODO: switch to opengrep for native Windows support
+# https://github.com/opengrep/opengrep
 [pre-push]
 parallel = true
 
 [[pre-push.jobs]]
 name = "semgrep"
-glob = ["*.py", "*.yml"]
-run = "semgrep scan --config auto --error --quiet --disable-version-check {push_files}"
+run = "semgrep scan --config auto --error --quiet --disable-version-check"
