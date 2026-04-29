@@ -677,7 +677,7 @@ def _(
     compute_ssp_deduction,
     compute_student_loan,
 ):
-    def calc_pay_ras(
+    def calc_pay(
         monthly_gross_income: float,
         employer_prc: float,
         employee_prc: float,
@@ -702,29 +702,28 @@ def _(
             employee_prc,
             TAX_RATES,
         )
-        annual_taxable = annual_paid_gross
+        annual_gross_after_sacrifice = annual_paid_gross - annual_employee_pension
 
-        annual_ni = compute_employee_ni(annual_paid_gross, TAX_RATES)
+        annual_ni = compute_employee_ni(annual_gross_after_sacrifice, TAX_RATES)
         annual_student_loan = compute_student_loan(
-            annual_paid_gross,
+            annual_gross_after_sacrifice,
             opts.student_loan_plans,
             TAX_RATES,
         )
         annual_tax = compute_income_tax(
-            annual_taxable,
+            annual_gross_after_sacrifice,
             TAX_RATES,
             opts.personal_allowance,
         )
 
         annual_net_after_ssp = (
-            annual_paid_gross
-            - annual_employee_pension
+            annual_gross_after_sacrifice
             - annual_ni
             - annual_student_loan
             - annual_tax
         )
 
-        annual_employer_ni = compute_employer_ni(annual_paid_gross, TAX_RATES)
+        annual_employer_ni = compute_employer_ni(annual_gross_after_sacrifice, TAX_RATES)
         annual_bik_ni = opts.health_insurance_bik * TAX_RATES.ni_employer_rate
         annual_employer_total = (
             annual_paid_gross
@@ -784,7 +783,7 @@ def _(
     def income_tax(annual_gross: float) -> float:
         return compute_income_tax(annual_gross, TAX_RATES)
 
-    return calc_pay_ras, income_tax
+    return calc_pay, income_tax
 
 
 @app.cell(hide_code=True)
@@ -794,7 +793,7 @@ def _(
     OptimizationOutcome,
     TAX_RATES,
     VALIDATION_BOUNDS,
-    calc_pay_ras,
+    calc_pay,
 ):
     def frange(start: float, stop: float, step: float) -> tuple[float, ...]:
         span = max(0.0, stop - start)
@@ -865,7 +864,7 @@ def _(
                             < TAX_RATES.min_total_pension_contribution
                         ):
                             continue
-                        proposal = calc_pay_ras(
+                        proposal = calc_pay(
                             monthly_gross,
                             employer_rate,
                             employee_rate,
@@ -1655,8 +1654,8 @@ def _(user_inputs):
 
 
 @app.cell(hide_code=True)
-def _(base_monthly_gross, calc_pay_ras, options, user_inputs):
-    curr = calc_pay_ras(
+def _(base_monthly_gross, calc_pay, options, user_inputs):
+    curr = calc_pay(
         base_monthly_gross,
         user_inputs.employer_pension_contribution,
         user_inputs.employee_pension_contribution,
@@ -1666,8 +1665,8 @@ def _(base_monthly_gross, calc_pay_ras, options, user_inputs):
 
 
 @app.cell(hide_code=True)
-def _(base_monthly_gross, calc_pay_ras, options, user_inputs):
-    optimization_curr = calc_pay_ras(
+def _(base_monthly_gross, calc_pay, options, user_inputs):
+    optimization_curr = calc_pay(
         base_monthly_gross,
         user_inputs.employer_pension_contribution,
         user_inputs.employee_pension_contribution,
@@ -1770,7 +1769,7 @@ def _(
     OptimizationTarget,
     TAX_RATES,
     VALIDATION_BOUNDS,
-    calc_pay_ras,
+    calc_pay,
     forecast_current_pension_pot_ui,
     forecast_drawdown_years_ui,
     forecast_inflation_ui,
@@ -1858,7 +1857,7 @@ def _(
             best_pair_proposal = None
             best_pair_objective = float("-inf")
             for annual_gross in gross_values:
-                proposal = calc_pay_ras(
+                proposal = calc_pay(
                     annual_gross / 12,
                     employer_rate,
                     employee_rate,
