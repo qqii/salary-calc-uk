@@ -13,5 +13,7 @@
   "labels": ["dependencies"],
   "lockFileMaintenance": {
     "enabled": true
-  }
+  },
+  "minimumReleaseAge": "3 days",
+  "automerge": true
 }
