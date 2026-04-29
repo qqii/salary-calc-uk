@@ -15,5 +15,6 @@
     "enabled": true
   },
   "minimumReleaseAge": "3 days",
-  "automerge": true
+  "automerge": true,
+  "automergeStrategy": "rebase"
 }
