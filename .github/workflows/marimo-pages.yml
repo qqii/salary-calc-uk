@@ -5,6 +5,11 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      skip-lint:
+        description: Skip lint
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,12 +22,14 @@ concurrency:
 
 jobs:
   lint:
+    if: ${{ !inputs.skip-lint }}
     uses: ./.github/workflows/lint.yml
     permissions:
       contents: read
       security-events: write
 
   build:
+    if: ${{ !cancelled() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') }}
     needs: lint
     runs-on: ubuntu-latest
     steps:
