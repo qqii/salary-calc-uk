@@ -1,12 +1,20 @@
 name: Lint
 
 on:
+  push:
+    branches:
+      - master
   pull_request:
     branches:
       - master
 
 permissions:
   contents: read
+  security-events: write
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/master' }}
 
 jobs:
   lint:
@@ -31,8 +39,15 @@ jobs:
       - name: Run pre-commit checks
         run: uv run lefthook run pre-commit --all-files --no-tty
 
-      - name: Run pre-push checks
-        run: uv run lefthook run pre-push --all-files --no-tty
-
       - name: Verify no files were modified
         run: git diff --exit-code
+
+      - name: Run semgrep
+        run: uv run semgrep scan --config auto --error --sarif-output=semgrep.sarif .
+
+      - name: Upload semgrep SARIF
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@b25d0ebf40e5b63ee81e1bd6e5d2a12b7c2aeb61 # v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
