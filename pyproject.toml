@@ -20,6 +20,7 @@ dev = [
     "deptry>=0.24.0",
     "ruff>=0.15.1",
     "ty>=0.0.17",
+    "semgrep>=1.161.0",
 ]
 
 [tool.coverage.report]
