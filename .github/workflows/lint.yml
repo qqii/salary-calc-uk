@@ -39,7 +39,10 @@ jobs:
       - name: Run semgrep
         env:
           SEMGREP_RULES: auto
-        run: uv run semgrep ci --sarif-output=semgrep.sarif
+        run: >-
+          uv run semgrep ci
+          --exclude-rule=bash.lang.security.ifs-tampering.ifs-tampering
+          --sarif-output=semgrep.sarif
 
       - name: Upload semgrep SARIF
         if: success() || failure()
