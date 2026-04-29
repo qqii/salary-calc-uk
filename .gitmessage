@@ -1,5 +1,6 @@
 
 
+Co-Authored-By: Claude Code <noreply@anthropic.com>
 # ------------------------ >8 ------------------------
 # <type>(<optional scope>): <description>
 #
@@ -7,7 +8,6 @@
 #
 # [optional footer(s)]
 #
-# Co-Authored-By: Claude Code <noreply@anthropic.com>
 # Co-authored-by: OpenAI Codex <codex@openai.com>
 #
 #  Types
