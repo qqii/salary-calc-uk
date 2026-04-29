@@ -42,6 +42,11 @@ file_types = ["text"]
 group.jobs = [{ run = "uv lock --no-progress --check" }]
 
 [[pre-commit.jobs]]
+name = "semgrep"
+glob = ["*.py", "*.yml"]
+run = "semgrep scan --config auto --error --quiet {staged_files}"
+
+[[pre-commit.jobs]]
 name = "marimo check"
 glob = ["*.nb.py"]
 file_types = ["text/x-python"]
