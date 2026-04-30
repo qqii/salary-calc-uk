@@ -1,3 +1,5 @@
+# Tax / NI / student-loan / pension calculations follow HMRC's tax-logic spec:
+# https://developer.service.hmrc.gov.uk/guides/tax-logic-service-guide/documentation/tax-calculation.html
 import marimo
 
 __generated_with = "0.19.11"
@@ -257,7 +259,7 @@ def _():
         standard_hours_per_day: float = 7.5
         health_insurance_annual: Money = 0.0
         health_insurance_bik: Money = 0.0
-        pension_scheme: PensionScheme = PensionScheme.SALARY_SACRIFICE
+        pension_scheme: PensionScheme = PensionScheme.RELIEF_AT_SOURCE
 
     @dataclass(frozen=True)
     class CalcInputs:
@@ -370,7 +372,7 @@ def _():
         annual_bonus: Money = 0
         employer_pension_contribution: Rate = 0.03
         employee_pension_contribution: Rate = 0.05
-        pension_scheme: PensionScheme = PensionScheme.SALARY_SACRIFICE
+        pension_scheme: PensionScheme = PensionScheme.RELIEF_AT_SOURCE
         standard_hours_per_day: float = 8.0
         current_pension_pot: Money = 32_000
         sick_pay_type: SickPayType = SickPayType.SSP
@@ -507,14 +509,19 @@ def _(
         annual_gross: float,
         rates: TaxRates,
         personal_allowance_override: float | None = None,
+        basic_rate_band_extension: float = 0.0,
+        adjusted_net_income: float | None = None,
     ) -> float:
         personal_allowance = (
             personal_allowance_override
             if personal_allowance_override is not None
             else rates.personal_allowance
         )
-        if annual_gross > rates.personal_allowance_taper_threshold:
-            taper = (annual_gross - rates.personal_allowance_taper_threshold) / 2
+        income_for_taper = (
+            adjusted_net_income if adjusted_net_income is not None else annual_gross
+        )
+        if income_for_taper > rates.personal_allowance_taper_threshold:
+            taper = (income_for_taper - rates.personal_allowance_taper_threshold) / 2
             personal_allowance = max(0.0, personal_allowance - taper)
 
         taxable_remaining = max(0.0, annual_gross)
@@ -522,7 +529,10 @@ def _(
         at_allowance = min(taxable_remaining, personal_allowance)
         taxable_remaining -= at_allowance
 
-        basic_limit = max(0.0, rates.basic_rate_upper - personal_allowance)
+        basic_limit = max(
+            0.0,
+            rates.basic_rate_upper + basic_rate_band_extension - personal_allowance,
+        )
         at_basic = min(taxable_remaining, basic_limit)
         tax = at_basic * rates.basic_rate
         taxable_remaining -= at_basic
@@ -726,21 +736,29 @@ def _(
             opts.pension_scheme,
         )
 
+        gross_employee_contribution = annual_employee_pension + annual_government_top_up
+
         if opts.pension_scheme == PensionScheme.SALARY_SACRIFICE:
             tax_base = annual_paid_gross - annual_employee_pension
             ni_base = annual_paid_gross - annual_employee_pension
             sl_base = annual_paid_gross - annual_employee_pension
             employee_cash_outlay = annual_employee_pension
+            band_extension = 0.0
+            adjusted_net_income = None
         elif opts.pension_scheme == PensionScheme.NET_PAY:
             tax_base = annual_paid_gross - annual_employee_pension
             ni_base = annual_paid_gross
             sl_base = annual_paid_gross
             employee_cash_outlay = annual_employee_pension
+            band_extension = 0.0
+            adjusted_net_income = None
         else:
             tax_base = annual_paid_gross
             ni_base = annual_paid_gross
             sl_base = annual_paid_gross
             employee_cash_outlay = annual_employee_pension
+            band_extension = gross_employee_contribution
+            adjusted_net_income = annual_paid_gross - gross_employee_contribution
 
         annual_ni = compute_employee_ni(ni_base, TAX_RATES)
         annual_student_loan = compute_student_loan(
@@ -752,6 +770,8 @@ def _(
             tax_base,
             TAX_RATES,
             opts.personal_allowance,
+            basic_rate_band_extension=band_extension,
+            adjusted_net_income=adjusted_net_income,
         )
 
         annual_net_after_ssp = (
