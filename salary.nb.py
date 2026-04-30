@@ -47,6 +47,7 @@ def _(
     holiday_days_ui,
     holiday_rollover_ui,
     mo,
+    pension_scheme_ui,
     plan_1_ui,
     plan_2_ui,
     plan_4_ui,
@@ -65,6 +66,7 @@ def _(
                 tax_code_ui,
                 employer_pension_contribution_ui,
                 employee_pension_contribution_ui,
+                pension_scheme_ui,
                 standard_hours_per_day_ui,
             ]
         ),
@@ -179,6 +181,11 @@ def _():
         PLAN_5 = "plan_5"
         POSTGRADUATE = "postgraduate"
 
+    class PensionScheme(StrEnum):
+        SALARY_SACRIFICE = "salary_sacrifice"
+        NET_PAY = "net_pay"
+        RELIEF_AT_SOURCE = "relief_at_source"
+
     class OptimizationTarget(StrEnum):
         TAKE_HOME = "take_home"
         EFFECTIVE_NET = "effective_net"
@@ -250,6 +257,7 @@ def _():
         standard_hours_per_day: float = 7.5
         health_insurance_annual: Money = 0.0
         health_insurance_bik: Money = 0.0
+        pension_scheme: PensionScheme = PensionScheme.SALARY_SACRIFICE
 
     @dataclass(frozen=True)
     class CalcInputs:
@@ -362,6 +370,7 @@ def _():
         annual_bonus: Money = 0
         employer_pension_contribution: Rate = 0.03
         employee_pension_contribution: Rate = 0.05
+        pension_scheme: PensionScheme = PensionScheme.SALARY_SACRIFICE
         standard_hours_per_day: float = 8.0
         current_pension_pot: Money = 32_000
         sick_pay_type: SickPayType = SickPayType.SSP
@@ -418,6 +427,7 @@ def _():
         IsaBreakdown,
         OptimizationOutcome,
         OptimizationTarget,
+        PensionScheme,
         RateSummary,
         SickPayType,
         StudentLoanPlan,
@@ -485,6 +495,7 @@ def _():
 def _(
     CalcOptions,
     MONTHS_PER_YEAR,
+    PensionScheme,
     RateSummary,
     SickPayType,
     StudentLoanPlan,
@@ -566,15 +577,25 @@ def _(
         employer_prc: float,
         employee_prc: float,
         rates: TaxRates,
+        scheme: PensionScheme,
     ) -> tuple[float, float, float, float]:
         qualifying_earnings = max(
             0.0,
             min(annual_gross, rates.pension_qualifying_earnings_upper)
             - rates.pension_qualifying_earnings_lower,
         )
-        annual_employee_pension = qualifying_earnings * employee_prc
-        annual_government_top_up = 0.0
         annual_employer_pension = qualifying_earnings * employer_prc
+        gross_employee_contribution = qualifying_earnings * employee_prc
+
+        if scheme == PensionScheme.RELIEF_AT_SOURCE:
+            annual_employee_pension = gross_employee_contribution * (
+                1 - rates.basic_rate
+            )
+            annual_government_top_up = gross_employee_contribution * rates.basic_rate
+        else:
+            annual_employee_pension = gross_employee_contribution
+            annual_government_top_up = 0.0
+
         annual_total_pension = (
             annual_employee_pension + annual_government_top_up + annual_employer_pension
         )
@@ -668,6 +689,7 @@ def _(
     CalcOptions,
     CalcResult,
     MONTHS_PER_YEAR,
+    PensionScheme,
     TAX_RATES,
     compute_effective_rates,
     compute_employee_ni,
@@ -701,29 +723,46 @@ def _(
             employer_prc,
             employee_prc,
             TAX_RATES,
+            opts.pension_scheme,
         )
-        annual_gross_after_sacrifice = annual_paid_gross - annual_employee_pension
 
-        annual_ni = compute_employee_ni(annual_gross_after_sacrifice, TAX_RATES)
+        if opts.pension_scheme == PensionScheme.SALARY_SACRIFICE:
+            tax_base = annual_paid_gross - annual_employee_pension
+            ni_base = annual_paid_gross - annual_employee_pension
+            sl_base = annual_paid_gross - annual_employee_pension
+            employee_cash_outlay = annual_employee_pension
+        elif opts.pension_scheme == PensionScheme.NET_PAY:
+            tax_base = annual_paid_gross - annual_employee_pension
+            ni_base = annual_paid_gross
+            sl_base = annual_paid_gross
+            employee_cash_outlay = annual_employee_pension
+        else:
+            tax_base = annual_paid_gross
+            ni_base = annual_paid_gross
+            sl_base = annual_paid_gross
+            employee_cash_outlay = annual_employee_pension
+
+        annual_ni = compute_employee_ni(ni_base, TAX_RATES)
         annual_student_loan = compute_student_loan(
-            annual_gross_after_sacrifice,
+            sl_base,
             opts.student_loan_plans,
             TAX_RATES,
         )
         annual_tax = compute_income_tax(
-            annual_gross_after_sacrifice,
+            tax_base,
             TAX_RATES,
             opts.personal_allowance,
         )
 
         annual_net_after_ssp = (
-            annual_gross_after_sacrifice
+            annual_paid_gross
+            - employee_cash_outlay
             - annual_ni
             - annual_student_loan
             - annual_tax
         )
 
-        annual_employer_ni = compute_employer_ni(annual_gross_after_sacrifice, TAX_RATES)
+        annual_employer_ni = compute_employer_ni(ni_base, TAX_RATES)
         annual_bik_ni = opts.health_insurance_bik * TAX_RATES.ni_employer_rate
         annual_employer_total = (
             annual_paid_gross
@@ -1202,6 +1241,7 @@ def _(
     FORECAST_ASSUMPTIONS,
     HEALTH_INSURANCE_BENCHMARK,
     INPUT_DEFAULTS,
+    PensionScheme,
     SickPayType,
     VALIDATION_BOUNDS,
     mo,
@@ -1226,6 +1266,21 @@ def _(
         value=INPUT_DEFAULTS.employee_pension_contribution,
         step=0.01,
         label="Employee Pension Contribution (qualifying earnings, 0-1)",
+    )
+    pension_scheme_options = {
+        "Salary sacrifice (reduces tax, NI, SL)": PensionScheme.SALARY_SACRIFICE.value,
+        "Net pay arrangement (reduces tax only)": PensionScheme.NET_PAY.value,
+        "Relief at source (basic-rate top-up to pot)": PensionScheme.RELIEF_AT_SOURCE.value,
+    }
+    _default_pension_scheme_label = next(
+        label
+        for label, scheme_value in pension_scheme_options.items()
+        if scheme_value == INPUT_DEFAULTS.pension_scheme.value
+    )
+    pension_scheme_ui = mo.ui.dropdown(
+        options=pension_scheme_options,
+        value=_default_pension_scheme_label,
+        label="Pension Scheme Type",
     )
     standard_hours_per_day_ui = mo.ui.number(
         value=INPUT_DEFAULTS.standard_hours_per_day,
@@ -1345,6 +1400,7 @@ def _(
         health_insurance_toggle_ui,
         holiday_days_ui,
         holiday_rollover_ui,
+        pension_scheme_ui,
         plan_1_ui,
         plan_2_ui,
         plan_4_ui,
@@ -1364,6 +1420,7 @@ def _(
     FieldSpec,
     INPUT_DEFAULTS,
     InputField,
+    PensionScheme,
     SickPayType,
     StudentLoanPlan,
     TAX_RATES,
@@ -1379,6 +1436,7 @@ def _(
     holiday_days_ui,
     holiday_rollover_ui,
     mo,
+    pension_scheme_ui,
     plan_1_ui,
     plan_2_ui,
     plan_4_ui,
@@ -1617,6 +1675,7 @@ def _(
         sick_days_per_year=sick_days,
         holiday_days=holiday_days + holiday_rollover,
         standard_hours_per_day=parsed_values[InputField.STANDARD_HOURS_PER_DAY],
+        pension_scheme=PensionScheme(pension_scheme_ui.value),
         health_insurance_annual=(
             parsed_values[InputField.HEALTH_INSURANCE_ANNUAL]
             if health_insurance_toggle
