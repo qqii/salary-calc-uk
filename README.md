@@ -7,13 +7,17 @@ https://qqii.github.io/salary-calc-uk/
 ## Prerequisites
 
 - Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+- Install [`direnv`](https://direnv.net/docs/installation.html) (optional — auto-runs `uv sync` and activates `.venv` on `cd`)
 
 ```shell
 git config commit.template .gitmessage
 lefthook install
+direnv allow  # if using direnv
 ```
 
 ## Getting Started
+
+With direnv, the venv is synced and activated automatically. Otherwise:
 
 ```shell
 uv sync
